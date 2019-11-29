@@ -117,8 +117,8 @@ dashboardPage(
             status = "danger",
             title = "Federal Tax",
             fluidRow(
-              valueBoxOutput("annualFedTaxInfo", width = 6),
-              valueBoxOutput("perPayrollFexTaxInfo", width = 6)
+              valueBoxOutput("perPayrollFexTaxInfo", width = 6),
+              valueBoxOutput("annualFedTaxInfo", width = 6)
             )
           ),
           box(
@@ -126,8 +126,8 @@ dashboardPage(
             status = "warning",
             title = "State Tax",
             fluidRow(
-              valueBoxOutput("annualStateTaxInfo", width = 6),
-              valueBoxOutput("perPayrollStateTaxInfo", width = 6)
+              valueBoxOutput("perPayrollStateTaxInfo", width = 6),
+              valueBoxOutput("annualStateTaxInfo", width = 6)
             )
           ),
           box(
