@@ -1,8 +1,8 @@
-function(input, output) {
+function(input, output, session) {
   payrollNums <- reactive({
     ifelse(input$payrollType == "Monthly", 12, 26)
   })
-  
+
   output$status <- renderText({
     validate(
       need(
@@ -23,42 +23,47 @@ function(input, output) {
         need(input$afterTaxDeductions >= 0, "Please use a non-negative number for after-tax deduction amount")
     )
   })
-  
+
+  observeEvent(input$fedTaxableGross, {
+    req(input$fedTaxableGross, input$fedTaxableGross >= 0)
+    updateSliderInput(session, "additionalBeforeTax", max = floor(input$fedTaxableGross))
+  })
+
   fedTaxableGross <- reactive({
     req(input$fedTaxableGross, input$fedTaxableGross >= 0)
-    input$fedTaxableGross
+    max(0, input$fedTaxableGross - input$additionalBeforeTax)
   })
-  
+
   output$fedTaxableGross <- renderValueBox({
     valueBox(
       formatNumber(fedTaxableGross()),
       subtitle = "Per-payroll federal taxable gross"
     )
   })
-  
+
   annualFedTaxableGross <- reactive({
     fedTaxableGross() * payrollNums()
   })
-  
+
   numOfExemptions <- reactive({
     req(input$numOfExemptions, input$numOfExemptions >= 0)
   })
-  
+
   annualFedTaxableGrossAfterExemptions <- reactive({
     annualFedTaxableGross() - 4200 * numOfExemptions()
   })
-  
+
   output$annualFedTaxableGrossAfterExemptionsInfo <- renderValueBox({
     valueBox(
       formatNumber(annualFedTaxableGrossAfterExemptions()),
       subtitle = "Annual taxable gross"
     )
   })
-  
+
   annualFedTax <- reactive({
     calculateFedTax(annualFedTaxableGrossAfterExemptions(), input$maritalStatus)
   })
-  
+
   output$annualFedTaxInfo <- renderValueBox({
     valueBox(
       formatNumber(annualFedTax()),
@@ -66,19 +71,19 @@ function(input, output) {
       color = "red"
     )
   })
-  
+
   perPayrollFedTax <- reactive({
     annualFedTax() / payrollNums()
   })
-  
+
   perPayrollStateDeduction <- reactive({
     ifelse(input$payrollType == "Monthly", 366.66, 169.23)
   })
-  
+
   perPayrollStateTax <- reactive({
     0.0425 * max(0, fedTaxableGross() - perPayrollStateDeduction())
   })
-  
+
   output$annualStateTaxInfo <- renderValueBox({
     valueBox(
       formatNumber(perPayrollStateTax() * payrollNums()),
@@ -86,7 +91,7 @@ function(input, output) {
       color = "yellow"
     )
   })
-  
+
   output$perPayrollFexTaxInfo <- renderValueBox({
     valueBox(
       formatNumber(perPayrollFedTax()),
@@ -94,7 +99,7 @@ function(input, output) {
       color = "red"
     )
   })
-  
+
   output$perPayrollStateTaxInfo <- renderValueBox({
     valueBox(
       formatNumber(perPayrollStateTax()),
@@ -102,20 +107,20 @@ function(input, output) {
       color = "yellow"
     )
   })
-  
+
   ficaTaxableGross <- reactive({
     req(input$ficaTaxableGross, input$ficaTaxableGross >= 0)
     input$ficaTaxableGross
   })
-  
+
   annualFicaTaxable <- reactive({
     ficaTaxableGross() * payrollNums()
   })
-  
+
   perPayrollSocialSecurityTax <- reactive({
     min(annualFicaTaxable(), 132900) * 0.062 / payrollNums()
   })
-  
+
   output$socialSecurityTaxInfo <- renderValueBox({
     valueBox(
       formatNumber(perPayrollSocialSecurityTax()),
@@ -123,7 +128,7 @@ function(input, output) {
       color = "maroon"
     )
   })
-  
+
   perPayrollMedicareTax <- reactive({
     tax <- annualFicaTaxable() * 0.0145
     wagesOver <- annualFicaTaxable() - 200000
@@ -132,7 +137,7 @@ function(input, output) {
     }
     tax / payrollNums()
   })
-  
+
   output$medicareTaxInfo <- renderValueBox({
     valueBox(
       formatNumber(perPayrollMedicareTax()),
@@ -140,16 +145,16 @@ function(input, output) {
       color = "maroon"
     )
   })
-  
+
   afterTaxDeductions <- reactive({
     req(input$afterTaxDeductions, input$afterTaxDeductions >= 0)
     input$afterTaxDeductions
   })
-  
+
   netPay <- reactive({
     fedTaxableGross() - perPayrollFedTax() - perPayrollStateTax() - perPayrollSocialSecurityTax() - perPayrollMedicareTax() - afterTaxDeductions()
   })
-  
+
   output$netPayInfo <- renderValueBox({
     valueBox(
       formatNumber(netPay()),

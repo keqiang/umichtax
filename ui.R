@@ -58,6 +58,16 @@ dashboardPage(
             ),
             helpText("Displayed as 'FED TAXABLE GROSS' in the Paycheck Summary portion of your pay stub"),
             tags$hr(),
+            sliderInput(
+              "additionalBeforeTax",
+              label = "Add more before-tax amount",
+              min = 0,
+              max = 5000,
+              value = 0,
+              step = 100
+            ),
+            helpText("Use this for retirement planning, such as a SRA contribution"),
+            tags$hr(),
             numericInput(
               "ficaTaxableGross",
               label = "FICA Taxable Gross",
