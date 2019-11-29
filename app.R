@@ -1,5 +1,6 @@
 library(shiny)
 library(shinydashboard)
+`%then%` <- shiny:::`%OR%`
 
 fedTaxBrackets <- list(
   "Single" = list(
@@ -46,6 +47,15 @@ ui <- dashboardPage(
   dashboardHeader(title = "UofM Tax Calculator"),
   dashboardSidebar(disable = TRUE),
   dashboardBody(
+    singleton(
+      tags$head(
+        tags$link(
+          rel = "stylesheet",
+          type = "text/css",
+          href = "css/main.css"
+        )
+      )
+    ),
     tags$h4(
       style = "color: red;",
       "EFFECTIVE January 1, 2019. The result is only an estimation of your tax. Please use with caution."
@@ -61,6 +71,7 @@ ui <- dashboardPage(
             width = 12,
             status = "warning",
             title = "Pay Stub Information",
+            textOutput("status"),
             fluidRow(
               column(
                 width = 6,
@@ -175,19 +186,49 @@ server <- function(input, output) {
     ifelse(input$payrollType == "Monthly", 12, 26)
   })
 
+  output$status <- renderText({
+    validate(
+      need(
+        input$fedTaxableGross, "Please enter your federal taxable gross"
+      ) %then%
+        need(input$fedTaxableGross >= 0, "Please use a non-negative number for federal taxable gross") %then%
+        need(
+          input$ficaTaxableGross, "Please enter your FICA taxable gross"
+        ) %then%
+        need(input$ficaTaxableGross >= 0, "Please use non-negative number for FICA taxable gross") %then%
+        need(
+          input$numOfExemptions, "Please enter number of your exemptions"
+        ) %then%
+        need(input$numOfExemptions >= 0, "Please use a non-negative number for exemptions") %then%
+        need(
+          input$afterTaxDeductions, "Please enter your after-tax deduction amount"
+        ) %then%
+        need(input$afterTaxDeductions >= 0, "Please use a non-negative number for after-tax deduction amount")
+    )
+  })
+
+  fedTaxableGross <- reactive({
+    req(input$fedTaxableGross, input$fedTaxableGross >= 0)
+    input$fedTaxableGross
+  })
+
   output$fedTaxableGross <- renderValueBox({
     valueBox(
-      formatNumber(input$fedTaxableGross),
+      formatNumber(fedTaxableGross()),
       subtitle = "Per-payroll federal taxable gross"
     )
   })
 
   annualFedTaxableGross <- reactive({
-    input$fedTaxableGross * payrollNums()
+    fedTaxableGross() * payrollNums()
+  })
+
+  numOfExemptions <- reactive({
+    req(input$numOfExemptions, input$numOfExemptions >= 0)
   })
 
   annualFedTaxableGrossAfterExemptions <- reactive({
-    annualFedTaxableGross() - 4200 * input$numOfExemptions
+    annualFedTaxableGross() - 4200 * numOfExemptions()
   })
 
   output$annualFedTaxableGrossAfterExemptionsInfo <- renderValueBox({
@@ -218,7 +259,7 @@ server <- function(input, output) {
   })
 
   perPayrollStateTax <- reactive({
-    0.0425 * (input$fedTaxableGross - perPayrollStateDeduction())
+    0.0425 * max(0, fedTaxableGross() - perPayrollStateDeduction())
   })
 
   output$annualStateTaxInfo <- renderValueBox({
@@ -245,8 +286,13 @@ server <- function(input, output) {
     )
   })
 
+  ficaTaxableGross <- reactive({
+    req(input$ficaTaxableGross, input$ficaTaxableGross >= 0)
+    input$ficaTaxableGross
+  })
+
   annualFicaTaxable <- reactive({
-    input$ficaTaxableGross * payrollNums()
+    ficaTaxableGross() * payrollNums()
   })
 
   perPayrollSocialSecurityTax <- reactive({
@@ -278,8 +324,13 @@ server <- function(input, output) {
     )
   })
 
+  afterTaxDeductions <- reactive({
+    req(input$afterTaxDeductions, input$afterTaxDeductions >= 0)
+    input$afterTaxDeductions
+  })
+
   netPay <- reactive({
-    input$fedTaxableGross - perPayrollFedTax() - perPayrollStateTax() - perPayrollSocialSecurityTax() - perPayrollMedicareTax() - input$afterTaxDeductions
+    fedTaxableGross() - perPayrollFedTax() - perPayrollStateTax() - perPayrollSocialSecurityTax() - perPayrollMedicareTax() - afterTaxDeductions()
   })
 
   output$netPayInfo <- renderValueBox({

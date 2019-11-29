@@ -1,0 +1,3 @@
+.shiny-output-error-validation { /*make the validate(need()) call in Shiny output text in red*/
+  color: red;
+}
